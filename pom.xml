@@ -75,5 +75,5 @@
         <finalName>${project.artifactId}-${project.version}</finalName>
         
     </build>
-
+    <name>lieutenant-node1</name>
 </project>

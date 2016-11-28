@@ -23,7 +23,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,7 @@ import org.apache.commons.io.IOUtils;
 public class LieutenantNodeMain {
 
     private static final String NODES_URL_FILENAME = "url_nodes" + File.separator + "url_nodes.properties";
-    private static final int NUMBER_OF_LIEUTENANT = 5; // tem que bater com o número de nós no arquivo
+    private static final int NUMBER_OF_LIEUTENANT = 2; // tem que bater com o número de nós no arquivo
 
     private List<LieutenantAddress> lieutenantAddress = new ArrayList<LieutenantAddress>();
 
@@ -114,10 +113,6 @@ public class LieutenantNodeMain {
         } else {
             this.honestyState = HonestyState.DISHONEST;
         }
-
-        System.out.println("node name: " + nodeName);
-        System.out.println("private key bytes: " + Arrays.toString(privateKeyBytes));
-        System.out.println("honesty: " + honestyState);
     }
 
     public void init() throws Exception {
@@ -174,35 +169,20 @@ public class LieutenantNodeMain {
                 .getClassLoader().getResourceAsStream("public_keys" + File.separator + "lieutenant1");
         InputStream lieutenant2PublicKeyStream = LieutenantNodeMain.class
                 .getClassLoader().getResourceAsStream("public_keys" + File.separator + "lieutenant2");
-        InputStream lieutenant3PublicKeyStream = LieutenantNodeMain.class
-                .getClassLoader().getResourceAsStream("public_keys" + File.separator + "lieutenant3");
-        InputStream lieutenant4PublicKeyStream = LieutenantNodeMain.class
-                .getClassLoader().getResourceAsStream("public_keys" + File.separator + "lieutenant4");
-        InputStream lieutenant5PublicKeyStream = LieutenantNodeMain.class
-                .getClassLoader().getResourceAsStream("public_keys" + File.separator + "lieutenant5");
 
         byte[] generalPublickKeyBytes = IOUtils.toByteArray(generalPublicKeyStream);
         byte[] lieutenant1PublickKeyBytes = IOUtils.toByteArray(lieutenant1PublicKeyStream);
         byte[] lieutenant2PublickKeyBytes = IOUtils.toByteArray(lieutenant2PublicKeyStream);
-        byte[] lieutenant3PublickKeyBytes = IOUtils.toByteArray(lieutenant3PublicKeyStream);
-        byte[] lieutenant4PublickKeyBytes = IOUtils.toByteArray(lieutenant4PublicKeyStream);
-        byte[] lieutenant5PublickKeyBytes = IOUtils.toByteArray(lieutenant5PublicKeyStream);
 
         KeyFactory keyFactory = KeyFactory.getInstance("DSA");
 
         PublicKey generatePublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(generalPublickKeyBytes));
         PublicKey lieutenant1PublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(lieutenant1PublickKeyBytes));
         PublicKey lieutenant2PublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(lieutenant2PublickKeyBytes));
-        PublicKey lieutenant3PublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(lieutenant3PublickKeyBytes));
-        PublicKey lieutenant4PublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(lieutenant4PublickKeyBytes));
-        PublicKey lieutenant5PublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(lieutenant5PublickKeyBytes));
 
         publicKeys.put("general", generatePublicKey);
         publicKeys.put("lieutenant1", lieutenant1PublicKey);
         publicKeys.put("lieutenant2", lieutenant2PublicKey);
-        publicKeys.put("lieutenant3", lieutenant3PublicKey);
-        publicKeys.put("lieutenant4", lieutenant4PublicKey);
-        publicKeys.put("lieutenant5", lieutenant5PublicKey);
 
     }
 
@@ -243,8 +223,6 @@ public class LieutenantNodeMain {
                 } else if (receivedMessage.startsWith("attack") || receivedMessage.startsWith("retreat")) {
                     // mensagem real
 
-                    System.out.println("Received message: " + receivedMessage);
-
                     // NUMBER OF LIEUTENANT: Número máximo de mensagens que virão par essa sessão (corresponde ao número de nós lieutenant na rede).
                     // Considerando que o General participa desta contagem, o meu nó não e a mensagem de um dos nós acabou de ser recebida.
                     for (int i = 1; i <= NUMBER_OF_LIEUTENANT; i++) {
@@ -257,16 +235,17 @@ public class LieutenantNodeMain {
                             // mais o repasse dos outros lientent. Essas duas ordens precisam ser iguais, caso
                             // contrário o lientent que repassou está mentindo.
 
+                            System.out.println("\nReceived order: " + receivedMessage + "\n");
+
                             String[] messages = receivedMessage.split(",");
 
                             String commonOrder = null;
-                            System.out.println("Processing each message...");
                             // Percorre esse chain de ordens a partir da ordem mais "antiga" (que corresponde a primeira ordem do general)
                             for (int j = messages.length - 1; j >= 0; j--) {
 
                                 String message = messages[j];
-
-                                System.out.println("part: " + message);
+                                
+                                System.out.println("Verifing received order: " + message);
 
                                 String[] split = message.split(":");
                                 String rcvdOrder = split[0];
@@ -281,7 +260,9 @@ public class LieutenantNodeMain {
                                     throw new IllegalStateException("Error: received signature and"
                                             + " locally computed signature do not match, message has been tempered. Aborting");
                                 }
-
+                                
+                                System.out.println("Signature is valid.\n");
+                                
                                 // verifica se esse chain de ordens recebidas contém todos a mesma ordem (attack ou retreat), caso contrário o nó que difere
                                 // é desonesto
                                 if (commonOrder == null) {
@@ -323,6 +304,8 @@ public class LieutenantNodeMain {
                         } else {
                             // general
 
+                            System.out.println("\nReceived order: " + receivedMessage);
+                            
                             String[] split = receivedMessage.split(":");
                             String order = split[0];
                             String sender = split[1];
@@ -340,7 +323,9 @@ public class LieutenantNodeMain {
                                 throw new IllegalStateException("Error: received signature and"
                                         + " locally computed signature do not match, message has been tempered. Aborting");
                             }
-
+                            
+                            System.out.println("Signature is valid.\n");
+                            
                             // Registrar a ordem do general na tabela de votos,
                             // verificando antes se a ordem deste general já foi registrado anteriormente
                             // e se bate com esta.
@@ -352,7 +337,7 @@ public class LieutenantNodeMain {
                             } else {
                                 orderTable.put(sender, signedOrder);
                             }
-
+                            
                             // agora tenho que repassar essa ordem do general pros outros nós Lieutenants
                             sendReceivedOrderToPeers(order, receivedMessage);
                         }
@@ -370,7 +355,6 @@ public class LieutenantNodeMain {
 
                             receivedMessage = reader.readLine();
 
-                            System.out.println("Received message: " + receivedMessage);
                         }
                     }
 
@@ -397,6 +381,7 @@ public class LieutenantNodeMain {
                 System.out.println("Retreat!");
             } else {
 
+                System.out.println("Deciding plan...\n");
                 for (Entry<String, SignedOrder> entry : orderTable.entrySet()) {
 
                     String entryNodeName = entry.getKey();
@@ -420,9 +405,9 @@ public class LieutenantNodeMain {
                     System.out.println("Plan: Whatever, I'm a traitor.");
                 } else {
                     if (attackCounter > retreatCounter) {
-                        System.out.println("Plan: Attack!");
+                        System.out.println("Plan: Attack!\n");
                     } else {
-                        System.out.println("Plan: Retreat!");
+                        System.out.println("Plan: Retreat!\n");
                     }
                 }
 
@@ -477,7 +462,7 @@ public class LieutenantNodeMain {
 
                     PrintWriter writer = new PrintWriter(socket.getOutputStream());
 
-                    System.out.printf("Sending message %s to %s\n", message, target);
+                    System.out.printf("Sending order: %s to %s\n", message, target);
                     writer.println(message);
                     writer.flush();
 
@@ -486,7 +471,7 @@ public class LieutenantNodeMain {
 
             } catch (Exception e) {
 
-                System.out.printf("Error sending message to %s: [%s]\n", target, e.getMessage());
+                System.out.printf("Error sending order to %s: [%s]\n", target, e.getMessage());
 
             } finally {
                 if (socket != null) {
@@ -544,8 +529,6 @@ public class LieutenantNodeMain {
         signatureHelper.update(orderToSend.getBytes());
         byte[] signature = signatureHelper.sign();
 
-        System.out.println("signature: " + Arrays.toString(signature));
-
         // passa a assinatura pra Base64 pra concatenar ao final da mensagem como texto.
         String newSignatureBase64 = DatatypeConverter.printBase64Binary(signature);
 
@@ -554,9 +537,10 @@ public class LieutenantNodeMain {
         // Adiciona a mensagem anterior do general na íntegra ao final desta mensagem
         message += "," + originalMessage;
 
+        System.out.println("Resending received order to other peers");
         // manda a mensagem para os outros lieutenants
         sendMessage(message, this.others);
-
+        
     }
 
 }
