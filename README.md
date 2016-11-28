@@ -20,4 +20,4 @@ Onde lieutenant1-privatekey é uma chave secreta gerada por [Keypair Generator](
 
 lieutenant1 é o nome do nó (e que deve estar no formato: lieutenant1, lieutenant2, ...).
 
-honest é a honestidade do nó (os valores podem ser honest ou dishonest).
+honest é o valor de honestidade do nó (os valores podem ser honest ou dishonest).
